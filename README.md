@@ -1,6 +1,6 @@
-# Prumo Android Client
+﻿# Prumo Android Client
 
-Shell Android (Capacitor) que embute o build do `prumo-web-client`.
+Shell Android (Capacitor) que embute o build do `promo_APP_Web`.
 
 ## Escopo atual
 - Paridade visual/funcional com o web.
@@ -17,8 +17,8 @@ npm install
 npm run android:open
 ```
 
-Por padrao os scripts procuram o repo web em `../prumo-web-client`.
-Se estiver em outro caminho, defina `PRUMO_WEB_CLIENT_DIR`.
+Por padrao os scripts procuram o repo web em `../promo_APP_Web`.
+Se estiver em outro caminho, defina `PROMO_APP_WEB_DIR`.
 
 ## Fluxo de build Android
 ```bash
@@ -32,12 +32,16 @@ npm run doctor
 ```
 
 ## Variaveis de ambiente
-As variaveis sao consumidas no build do `prumo-web-client`:
+As variaveis sao consumidas no build do `promo_APP_Web`:
 - `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `VITE_SUPABASE_ANON_KEY`
+- `VITE_SUPABASE_PUBLISHABLE_KEY` (alias legado opcional)
 
 ## GitHub Actions
 Workflows incluidos:
 - `android-ci`: valida sync do shell com build web embutido.
 
 # Promo_APP_Android
+
+
+

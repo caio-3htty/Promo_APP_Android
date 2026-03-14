@@ -1,4 +1,4 @@
-import fs from "fs";
+﻿import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -9,9 +9,9 @@ const targetDir = path.resolve(projectRoot, "web");
 
 function resolveWebDistDir() {
   const webClientCandidates = [
-    process.env.PRUMO_WEB_CLIENT_DIR,
-    path.resolve(projectRoot, "..", "prumo-web-client"),
-    path.resolve(projectRoot, "prumo-web-client"),
+    process.env.PROMO_APP_WEB_DIR,
+    path.resolve(projectRoot, "..", "promo_APP_Web"),
+    path.resolve(projectRoot, "promo_APP_Web"),
   ].filter(Boolean);
 
   for (const candidate of webClientCandidates) {
@@ -21,7 +21,7 @@ function resolveWebDistDir() {
     }
   }
 
-  return path.resolve(projectRoot, "..", "prumo-web-client", "dist");
+  return path.resolve(projectRoot, "..", "promo_APP_Web", "dist");
 }
 
 const sourceDir = resolveWebDistDir();
@@ -35,3 +35,4 @@ fs.mkdirSync(targetDir, { recursive: true });
 fs.cpSync(sourceDir, targetDir, { recursive: true });
 
 console.log(`Synced web build: ${sourceDir} -> ${targetDir}`);
+

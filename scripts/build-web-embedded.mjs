@@ -1,4 +1,4 @@
-import fs from "fs";
+﻿import fs from "fs";
 import path from "path";
 import { spawnSync } from "child_process";
 import { fileURLToPath } from "url";
@@ -9,9 +9,9 @@ const projectRoot = path.resolve(__dirname, "..");
 
 function resolveWebClientDir() {
   const candidates = [
-    process.env.PRUMO_WEB_CLIENT_DIR,
-    path.resolve(projectRoot, "..", "prumo-web-client"),
-    path.resolve(projectRoot, "prumo-web-client"),
+    process.env.PROMO_APP_WEB_DIR,
+    path.resolve(projectRoot, "..", "promo_APP_Web"),
+    path.resolve(projectRoot, "promo_APP_Web"),
   ].filter(Boolean);
 
   for (const candidate of candidates) {
@@ -22,7 +22,7 @@ function resolveWebClientDir() {
   }
 
   throw new Error(
-    "Could not locate prumo-web-client. Set PRUMO_WEB_CLIENT_DIR or place repo at ../prumo-web-client.",
+    "Could not locate promo_APP_Web. Set PROMO_APP_WEB_DIR or place repo at ../promo_APP_Web.",
   );
 }
 
@@ -36,3 +36,4 @@ const result = spawnSync(command, ["run", "build:embedded"], {
 if (result.status !== 0) {
   process.exit(result.status ?? 1);
 }
+

@@ -1,4 +1,4 @@
-name: android-build
+﻿name: android-build
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ jobs:
   build-apk:
     runs-on: ubuntu-latest
     env:
-      PRUMO_WEB_CLIENT_DIR: ./prumo-web-client
+      PROMO_APP_WEB_DIR: ./promo_APP_Web
       VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
     steps:
@@ -17,8 +17,8 @@ jobs:
       - name: Checkout web client
         uses: actions/checkout@v4
         with:
-          repository: caio-3htty/prumo-web-client
-          path: prumo-web-client
+          repository: caio-3htty/promo_APP_Web
+          path: promo_APP_Web
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -39,7 +39,7 @@ jobs:
         run: npm ci
 
       - name: Install web dependencies
-        run: npm --prefix ./prumo-web-client ci
+        run: npm --prefix ./promo_APP_Web ci
 
       - name: Install Android SDK packages
         run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
@@ -50,6 +50,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: prumo-android-client-debug-apk
+          name: promo_APP_Android-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
