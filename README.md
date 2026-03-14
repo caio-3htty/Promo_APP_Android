@@ -1,4 +1,4 @@
-﻿# Prumo Android Client
+# Prumo Android Client
 
 Shell Android (Capacitor) que embute o build do `promo_APP_Web`.
 
