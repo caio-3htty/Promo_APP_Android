@@ -1,47 +1,49 @@
-# Prumo Android Client
+# promo_APP_Android (Kotlin Native)
 
-Shell Android (Capacitor) que embute o build do `promo_APP_Web`.
+App Android 100% nativo em Kotlin + Jetpack Compose + MVVM.
 
-## Escopo atual
-- Paridade visual/funcional com o web.
-- Empacotamento local do build web no APK.
+## Escopo V1
+- Auth (Supabase GoTrue)
+- Obras (lista e selecao)
+- Pedidos (lista + busca + criacao/edicao)
+- Estoque (consulta e atualizacao)
 
-## Requisitos
-- Node.js 20+
-- npm 10+
-- Android Studio + Android SDK (para gerar APK local)
+## Arquitetura
+- `app`: navegacao e composicao das features
+- `core`: modelos/contratos/erros/estado de tela
+- `data`: cliente Supabase (Auth + PostgREST), storage seguro e repositorios
+- `feature-auth`, `feature-obras`, `feature-pedidos`, `feature-estoque`: tela + ViewModel
 
-## Rodar local
+## Requisitos locais
+- JDK 17
+- Android SDK instalado (variavel `ANDROID_HOME` ou `local.properties` com `sdk.dir=...`)
+- Variaveis de ambiente (ou `~/.gradle/gradle.properties`):
+  - `SUPABASE_URL`
+  - `SUPABASE_ANON_KEY`
+
+## Build e testes locais
+Linux/macOS:
 ```bash
-npm install
-npm run android:open
+./gradlew lintDebug testDebugUnitTest assembleDebug
 ```
 
-Por padrao os scripts procuram o repo web em `../promo_APP_Web`.
-Se estiver em outro caminho, defina `PROMO_APP_WEB_DIR`.
-
-## Fluxo de build Android
-```bash
-npm run android:sync
-npm run android:build
+Windows:
+```bat
+gradlew.bat lintDebug testDebugUnitTest assembleDebug
 ```
 
-## Validacao local
-```bash
-npm run doctor
-```
+## Release interna (APK)
+- Pipeline CI (`android-native-ci.yml`): lint + testes + debug APK.
+- Pipeline release (`android-native-release.yml`): gera debug APK e release APK.
+- A release assinada e produzida quando os secrets estiverem configurados:
+  - `ANDROID_KEYSTORE_BASE64`
+  - `KEY_ALIAS`
+  - `KEYSTORE_PASSWORD`
+  - `KEY_PASSWORD`
 
-## Variaveis de ambiente
-As variaveis sao consumidas no build do `promo_APP_Web`:
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-- `VITE_SUPABASE_PUBLISHABLE_KEY` (alias legado opcional)
+## Contrato de ambiente
+- O app utiliza `SUPABASE_URL` e `SUPABASE_ANON_KEY` em `BuildConfig`.
+- Nao versionar `.env`, keystore ou chaves privadas.
 
-## GitHub Actions
-Workflows incluidos:
-- `android-ci`: valida sync do shell com build web embutido.
-
-# Promo_APP_Android
-
-
-
+## Legacy congelado
+O app Capacitor antigo foi congelado em `legacy-capacitor/` apenas para referencia e rollback historico.
