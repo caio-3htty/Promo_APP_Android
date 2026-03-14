@@ -6,6 +6,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "clean": "node scripts/clean.mjs",
     "build:web:embedded": "node scripts/build-web-embedded.mjs",
     "sync:web:dist": "node scripts/sync-web-build.mjs",
     "cap": "node scripts/run-cap.mjs",

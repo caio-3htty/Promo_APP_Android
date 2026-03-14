@@ -2,4 +2,6 @@ node_modules
 .env
 android/.gradle
 android/.cxx
+android/app/build
 web
+.cache
