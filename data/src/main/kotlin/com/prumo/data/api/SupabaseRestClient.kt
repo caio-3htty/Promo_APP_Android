@@ -13,6 +13,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.Route
+import org.json.JSONObject
 
 class SupabaseRestClient(
     private val config: SupabaseConfig,
@@ -64,6 +65,20 @@ class SupabaseRestClient(
         }
     }
 
+    suspend fun postReturning(path: String, bodyJson: String): String {
+        val request = Request.Builder()
+            .url("${config.baseUrl}/rest/v1/$path")
+            .header("Prefer", "return=representation")
+            .post(bodyJson.toRequestBody(mediaType))
+            .build()
+
+        return client.newCall(request).execute().use { response ->
+            val payload = response.body?.string().orEmpty()
+            if (!response.isSuccessful) error("POST $path failed (${response.code}): $payload")
+            payload
+        }
+    }
+
     suspend fun patch(path: String, query: Map<String, String>, bodyJson: String) {
         val urlBuilder = "${config.baseUrl}/rest/v1/$path".toHttpUrl().newBuilder()
         query.forEach { (key, value) -> urlBuilder.addQueryParameter(key, value) }
@@ -77,6 +92,34 @@ class SupabaseRestClient(
         client.newCall(request).execute().use { response ->
             val payload = response.body?.string().orEmpty()
             if (!response.isSuccessful) error("PATCH $path failed (${response.code}): $payload")
+        }
+    }
+
+    suspend fun delete(path: String, query: Map<String, String>) {
+        val urlBuilder = "${config.baseUrl}/rest/v1/$path".toHttpUrl().newBuilder()
+        query.forEach { (key, value) -> urlBuilder.addQueryParameter(key, value) }
+
+        val request = Request.Builder()
+            .url(urlBuilder.build())
+            .delete()
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            val payload = response.body?.string().orEmpty()
+            if (!response.isSuccessful) error("DELETE $path failed (${response.code}): $payload")
+        }
+    }
+
+    suspend fun rpc(functionName: String, payload: JSONObject): String {
+        val request = Request.Builder()
+            .url("${config.baseUrl}/rest/v1/rpc/$functionName")
+            .post(payload.toString().toRequestBody(mediaType))
+            .build()
+
+        return client.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (!response.isSuccessful) error("RPC $functionName failed (${response.code}): $body")
+            body
         }
     }
 }

@@ -2,17 +2,24 @@
 
 App Android 100% nativo em Kotlin + Jetpack Compose + MVVM.
 
-## Escopo V1
-- Auth (Supabase GoTrue)
-- Obras (lista e selecao)
-- Pedidos (lista + busca + criacao/edicao)
-- Estoque (consulta e atualizacao)
+## Escopo atual (paridade web em progresso)
+- Auth completo: login + signup (`company_owner` / `company_internal`) + review de solicitacao por token
+- Guardas RBAC/obra alinhados ao web (session, papel, permissao e escopo por obra)
+- Rotas Android espelhadas do web:
+  - `index`, `sem-acesso`, `obras`, `dashboard/{obraId}`
+  - `dashboard/{obraId}/pedidos`, `dashboard/{obraId}/recebimento`, `dashboard/{obraId}/estoque`
+  - `cadastros/fornecedores`, `cadastros/materiais`, `cadastros/material-fornecedor`
+  - `usuarios-acessos`, `acesso/avaliar/{token}`
+- Fluxos operacionais: pedidos, recebimento com `codigo_compra` obrigatorio e atualizacao de estoque, cadastros e gestao basica de usuarios/acessos.
+
+Baseline de contrato web congelado: ver [docs/web-baseline-parity.md](docs/web-baseline-parity.md).
 
 ## Arquitetura
 - `app`: navegacao e composicao das features
 - `core`: modelos/contratos/erros/estado de tela
 - `data`: cliente Supabase (Auth + PostgREST), storage seguro e repositorios
-- `feature-auth`, `feature-obras`, `feature-pedidos`, `feature-estoque`: tela + ViewModel
+- `feature-auth`, `feature-pedidos`, `feature-estoque`: tela + ViewModel de modulos centrais
+- `app/*Screens.kt`: shell de paridade para rotas adicionais (obras/cadastros/usuarios/recebimento)
 
 ## Requisitos locais
 - JDK 17
@@ -24,12 +31,12 @@ App Android 100% nativo em Kotlin + Jetpack Compose + MVVM.
 ## Build e testes locais
 Linux/macOS:
 ```bash
-./gradlew lintDebug testDebugUnitTest assembleDebug
+./gradlew lintDebug testDebugUnitTest assembleDebug assembleRelease
 ```
 
 Windows:
 ```bat
-gradlew.bat lintDebug testDebugUnitTest assembleDebug
+gradlew.bat lintDebug testDebugUnitTest assembleDebug assembleRelease
 ```
 
 ## Release interna (APK)

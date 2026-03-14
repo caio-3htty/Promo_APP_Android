@@ -26,9 +26,9 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Build + Unit tests + Lint
+      - name: Lint + Unit tests + Build
         run: |
-          ./gradlew lintDebug testDebugUnitTest assembleDebug --stacktrace
+          ./gradlew lintDebug testDebugUnitTest assembleDebug assembleRelease --stacktrace
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4

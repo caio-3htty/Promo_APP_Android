@@ -41,20 +41,25 @@ class PedidosViewModelTest {
 }
 
 private class FakePedidosRepository : PedidosRepository {
-    override suspend fun listPedidos(obraId: String, status: String?, search: String?): List<PedidoResumo> {
+    override suspend fun listPedidos(obraId: String?, status: String?, search: String?): List<PedidoResumo> {
         return listOf(
             PedidoResumo(
                 id = "p1",
-                obraId = obraId,
+                obraId = obraId ?: "obra-1",
+                obraNome = "Obra A",
                 materialId = "m1",
                 materialNome = "Bloco",
+                materialUnidade = "un",
                 fornecedorId = "f1",
                 fornecedorNome = "Fornecedor A",
                 quantidade = 10.0,
                 precoUnit = 8.0,
                 total = 80.0,
                 status = "pendente",
-                codigoCompra = null
+                codigoCompra = null,
+                criadoEm = "2026-03-14T00:00:00Z",
+                dataRecebimento = null,
+                deletedAt = null
             )
         )
     }
@@ -63,7 +68,19 @@ private class FakePedidosRepository : PedidosRepository {
 
     override suspend fun listFornecedores(): List<FornecedorSummary> = listOf(FornecedorSummary("f1", "Fornecedor A"))
 
+    override suspend fun listObras() = emptyList<com.prumo.core.model.ObraSummary>()
+
     override suspend fun createPedido(input: PedidoInput) = Unit
 
     override suspend fun updatePedido(id: String, input: PedidoInput) = Unit
+
+    override suspend fun updatePedidoStatus(
+        id: String,
+        status: String,
+        codigoCompra: String?,
+        dataRecebimentoIso: String?,
+        recebidoPor: String?
+    ) = Unit
+
+    override suspend fun softDeletePedido(id: String) = Unit
 }

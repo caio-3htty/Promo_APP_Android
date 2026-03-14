@@ -2,6 +2,7 @@ package com.prumo.feature.estoque
 
 import com.prumo.core.model.EstoqueItem
 import com.prumo.core.model.EstoqueUpdateInput
+import com.prumo.core.model.RecebimentoInput
 import com.prumo.core.repository.EstoqueRepository
 import com.prumo.core.state.ScreenState
 import kotlinx.coroutines.Dispatchers
@@ -39,11 +40,12 @@ class EstoqueViewModelTest {
 }
 
 private class FakeEstoqueRepository : EstoqueRepository {
-    override suspend fun listEstoque(obraId: String): List<EstoqueItem> {
+    override suspend fun listEstoque(obraId: String?): List<EstoqueItem> {
         return listOf(
             EstoqueItem(
                 id = "e1",
-                obraId = obraId,
+                obraId = obraId ?: "obra-1",
+                obraNome = "Obra A",
                 materialId = "m1",
                 materialNome = "Bloco",
                 unidade = "un",
@@ -54,4 +56,6 @@ private class FakeEstoqueRepository : EstoqueRepository {
     }
 
     override suspend fun updateEstoque(itemId: String, input: EstoqueUpdateInput) = Unit
+
+    override suspend fun upsertFromRecebimento(input: RecebimentoInput) = Unit
 }

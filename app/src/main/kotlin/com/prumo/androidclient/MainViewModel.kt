@@ -2,7 +2,6 @@ package com.prumo.androidclient
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.prumo.core.model.ObraSummary
 import com.prumo.core.model.SessionToken
 import com.prumo.core.repository.AuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,7 +12,9 @@ import kotlinx.coroutines.launch
 data class MainUiState(
     val bootDone: Boolean = false,
     val session: SessionToken? = null,
-    val selectedObra: ObraSummary? = null
+    val selectedObraId: String? = null,
+    val loadingAccess: Boolean = false,
+    val error: String? = null
 )
 
 class MainViewModel(
@@ -24,23 +25,70 @@ class MainViewModel(
 
     fun bootstrap() {
         viewModelScope.launch {
-            val current = authRepository.currentSession()
-            _state.value = _state.value.copy(bootDone = true, session = current)
+            _state.value = _state.value.copy(loadingAccess = true, error = null)
+            runCatching {
+                val current = authRepository.currentSession()
+                if (current != null) {
+                    authRepository.refreshSessionContext() ?: current
+                } else {
+                    null
+                }
+            }.onSuccess { session ->
+                _state.value = _state.value.copy(
+                    bootDone = true,
+                    session = session,
+                    selectedObraId = _state.value.selectedObraId ?: session?.user?.defaultObraId,
+                    loadingAccess = false
+                )
+            }.onFailure { error ->
+                _state.value = _state.value.copy(
+                    bootDone = true,
+                    session = null,
+                    selectedObraId = null,
+                    loadingAccess = false,
+                    error = error.message ?: "Falha ao carregar sessao."
+                )
+            }
         }
     }
 
     fun onLoggedIn(token: SessionToken) {
-        _state.value = _state.value.copy(session = token)
+        _state.value = _state.value.copy(
+            session = token,
+            selectedObraId = token.user.defaultObraId,
+            error = null
+        )
     }
 
-    fun selectObra(obra: ObraSummary) {
-        _state.value = _state.value.copy(selectedObra = obra)
+    fun selectObra(obraId: String) {
+        _state.value = _state.value.copy(selectedObraId = obraId)
+    }
+
+    fun refreshAccess() {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(loadingAccess = true)
+            runCatching { authRepository.refreshSessionContext() }
+                .onSuccess { refreshed ->
+                    _state.value = _state.value.copy(
+                        loadingAccess = false,
+                        session = refreshed,
+                        selectedObraId = _state.value.selectedObraId ?: refreshed?.user?.defaultObraId,
+                        error = null
+                    )
+                }
+                .onFailure {
+                    _state.value = _state.value.copy(
+                        loadingAccess = false,
+                        error = it.message ?: "Falha ao atualizar acessos."
+                    )
+                }
+        }
     }
 
     fun logout() {
         viewModelScope.launch {
             authRepository.logout()
-            _state.value = MainUiState(bootDone = true)
+            _state.value = MainUiState(bootDone = true, session = null)
         }
     }
 }

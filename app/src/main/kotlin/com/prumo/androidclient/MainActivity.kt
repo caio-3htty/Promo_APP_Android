@@ -3,14 +3,8 @@ package com.prumo.androidclient
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,28 +19,33 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.prumo.core.model.AccessPolicy
+import com.prumo.core.model.AppRole
 import com.prumo.core.model.ObraSummary
+import com.prumo.core.model.SessionUser
 import com.prumo.data.repository.AppContainer
 import com.prumo.feature.auth.LoginScreen
 import com.prumo.feature.auth.LoginViewModel
 import com.prumo.feature.estoque.EstoqueScreen
 import com.prumo.feature.estoque.EstoqueViewModel
-import com.prumo.feature.obras.ObrasScreen
-import com.prumo.feature.obras.ObrasViewModel
 import com.prumo.feature.pedidos.PedidosScreen
 import com.prumo.feature.pedidos.PedidosViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         val container = (application as PromoAndroidApp).container
 
         setContent {
-            MaterialTheme {
+            PromoTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     PromoApp(container = container)
                 }
@@ -68,10 +67,6 @@ private fun PromoApp(container: AppContainer) {
         factory = simpleFactory { LoginViewModel(container.authRepository) }
     )
 
-    val obrasViewModel: ObrasViewModel = viewModel(
-        factory = simpleFactory { ObrasViewModel(container.obrasRepository) }
-    )
-
     val pedidosViewModel: PedidosViewModel = viewModel(
         factory = simpleFactory { PedidosViewModel(container.pedidosRepository) }
     )
@@ -84,106 +79,287 @@ private fun PromoApp(container: AppContainer) {
         mainViewModel.bootstrap()
     }
 
-    LaunchedEffect(state.bootDone, state.session) {
-        if (!state.bootDone) return@LaunchedEffect
-        if (state.session == null) {
-            navController.navigate("login") {
-                popUpTo(0)
+    NavHost(navController = navController, startDestination = AppRoutes.Splash) {
+        composable(AppRoutes.Splash) {
+            LaunchedEffect(state.bootDone, state.session?.user?.userId) {
+                if (!state.bootDone) return@LaunchedEffect
+                if (state.session == null) {
+                    navController.navigate(AppRoutes.Login) { popUpTo(0) }
+                } else {
+                    navController.navigate(AppRoutes.Index) { popUpTo(0) }
+                }
             }
-        } else {
-            navController.navigate("obras") {
-                popUpTo(0)
-            }
-        }
-    }
-
-    NavHost(navController = navController, startDestination = "splash") {
-        composable("splash") {
             Text("Inicializando...", modifier = Modifier.padding(24.dp))
         }
 
-        composable("login") {
-            LoginScreen(viewModel = loginViewModel) {
-                mainViewModel.bootstrap()
-                navController.navigate("obras") {
-                    popUpTo("login") { inclusive = true }
-                }
-            }
-        }
-
-        composable("obras") {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Selecione a Obra", style = MaterialTheme.typography.titleLarge)
-                    Button(onClick = {
-                        mainViewModel.logout()
-                        navController.navigate("login") {
-                            popUpTo(0)
-                        }
-                    }) {
-                        Text("Sair")
+        composable(AppRoutes.Login) {
+            LoginScreen(
+                viewModel = loginViewModel,
+                origin = "https://prumo.app",
+                onLoggedIn = {
+                    mainViewModel.bootstrap()
+                    navController.navigate(AppRoutes.Index) {
+                        popUpTo(AppRoutes.Login) { inclusive = true }
                     }
                 }
+            )
+        }
 
-                ObrasScreen(viewModel = obrasViewModel) { obra ->
-                    mainViewModel.selectObra(obra)
-                    navController.navigate("home")
+        composable(
+            route = AppRoutes.AccessReviewPattern,
+            arguments = listOf(navArgument("token") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val token = backStackEntry.arguments?.getString("token").orEmpty()
+            AccessRequestReviewScreen(
+                token = token,
+                authRepository = container.authRepository,
+                onBackLogin = {
+                    navController.navigate(AppRoutes.Login) { popUpTo(0) }
+                }
+            )
+        }
+
+        composable(AppRoutes.Index) {
+            RequireSession(state, navController) { user ->
+                if (!AccessPolicy.hasOperationalAccess(user)) {
+                    LaunchedEffect("no_access") { navController.navigate(AppRoutes.SemAcesso) }
+                    Text("Redirecionando...", modifier = Modifier.padding(20.dp))
+                } else {
+                    LaunchedEffect(user.multiObraEnabled, user.defaultObraId) {
+                        val defaultObraId = user.defaultObraId
+                        if (!user.multiObraEnabled && !defaultObraId.isNullOrBlank()) {
+                            mainViewModel.selectObra(defaultObraId)
+                            navController.navigate(AppRoutes.dashboard(defaultObraId))
+                        }
+                    }
+                    IndexScreen(
+                        user = user,
+                        onOpenObras = { navController.navigate(AppRoutes.Obras) },
+                        onOpenCadastros = { navController.navigate(AppRoutes.Fornecedores) },
+                        onOpenUsuarios = { navController.navigate(AppRoutes.UsuariosAcessos) },
+                        onLogout = {
+                            mainViewModel.logout()
+                            navController.navigate(AppRoutes.Login) { popUpTo(0) }
+                        }
+                    )
                 }
             }
         }
 
-        composable("home") {
-            val selected = state.selectedObra
-            if (selected == null) {
-                Text("Nenhuma obra selecionada", modifier = Modifier.padding(16.dp))
-            } else {
-                HomeTabs(
-                    selectedObra = selected,
-                    pedidosViewModel = pedidosViewModel,
-                    estoqueViewModel = estoqueViewModel,
-                    onBackObras = { navController.navigate("obras") }
-                )
+        composable(AppRoutes.SemAcesso) {
+            SemAcessoScreen(
+                user = state.session?.user,
+                onRefresh = { mainViewModel.refreshAccess() },
+                onGoHome = { navController.navigate(AppRoutes.Index) },
+                onLogout = {
+                    mainViewModel.logout()
+                    navController.navigate(AppRoutes.Login) { popUpTo(0) }
+                }
+            )
+        }
+
+        composable(AppRoutes.Obras) {
+            RequireSession(state, navController) { user ->
+                if (!AccessPolicy.can(user, "obras.view")) {
+                    LaunchedEffect("obras_deny") { navController.navigate(AppRoutes.SemAcesso) }
+                    Text("Sem permissao", modifier = Modifier.padding(20.dp))
+                } else {
+                    ObrasManagerScreen(
+                        repository = container.obrasRepository,
+                        canManage = user.role == AppRole.MASTER || user.role == AppRole.GESTOR,
+                        onOpenDashboard = { obra ->
+                            mainViewModel.selectObra(obra.id)
+                            navController.navigate(AppRoutes.dashboard(obra.id))
+                        }
+                    )
+                }
+            }
+        }
+
+        composable(
+            route = AppRoutes.DashboardPattern,
+            arguments = listOf(navArgument("obraId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val obraId = backStackEntry.arguments?.getString("obraId").orEmpty()
+            RequireSession(state, navController) { user ->
+                if (!hasObraReadAccess(user, obraId)) {
+                    LaunchedEffect("dashboard_deny_$obraId") { navController.navigate(AppRoutes.SemAcesso) }
+                    Text("Sem permissao", modifier = Modifier.padding(20.dp))
+                } else {
+                    val obra = rememberObra(container = container, obraId = obraId)
+                    DashboardScreen(
+                        obra = obra,
+                        onOpenPedidos = { navController.navigate(AppRoutes.pedidos(obraId)) },
+                        onOpenRecebimento = { navController.navigate(AppRoutes.recebimento(obraId)) },
+                        onOpenEstoque = { navController.navigate(AppRoutes.estoque(obraId)) },
+                        onOpenCadastros = { navController.navigate(AppRoutes.Fornecedores) },
+                        onBackObras = { navController.navigate(AppRoutes.Obras) }
+                    )
+                }
+            }
+        }
+
+        composable(
+            route = AppRoutes.PedidosPattern,
+            arguments = listOf(navArgument("obraId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val obraId = backStackEntry.arguments?.getString("obraId").orEmpty()
+            RequireSession(state, navController) { user ->
+                if (!hasObraPermission(user, obraId, "pedidos.view")) {
+                    LaunchedEffect("pedidos_deny_$obraId") { navController.navigate(AppRoutes.SemAcesso) }
+                    Text("Sem permissao", modifier = Modifier.padding(20.dp))
+                } else {
+                    mainViewModel.selectObra(obraId)
+                    PedidosScreen(
+                        obraId = obraId,
+                        viewModel = pedidosViewModel,
+                        canEditBase = AccessPolicy.canEditPedidosBase(user.role),
+                        canApprove = AccessPolicy.canApprovePedidos(user.role),
+                        canDelete = user.role == AppRole.MASTER || user.role == AppRole.GESTOR
+                    )
+                }
+            }
+        }
+
+        composable(
+            route = AppRoutes.RecebimentoPattern,
+            arguments = listOf(navArgument("obraId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val obraId = backStackEntry.arguments?.getString("obraId").orEmpty()
+            RequireSession(state, navController) { user ->
+                val roleAllowed = AccessPolicy.canAccessRecebimentoRoute(user.role)
+                val permissionAllowed = hasObraPermission(user, obraId, "pedidos.view") || hasObraPermission(user, obraId, "pedidos.receive")
+                if (!roleAllowed || !permissionAllowed || !AccessPolicy.hasObraAccess(user.role, user.obraScope, obraId)) {
+                    LaunchedEffect("receb_deny_$obraId") { navController.navigate(AppRoutes.SemAcesso) }
+                    Text("Sem permissao", modifier = Modifier.padding(20.dp))
+                } else {
+                    mainViewModel.selectObra(obraId)
+                    RecebimentoManagerScreen(
+                        obraId = obraId,
+                        pedidosRepository = container.pedidosRepository,
+                        estoqueRepository = container.estoqueRepository,
+                        userId = user.userId
+                    )
+                }
+            }
+        }
+
+        composable(
+            route = AppRoutes.EstoquePattern,
+            arguments = listOf(navArgument("obraId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val obraId = backStackEntry.arguments?.getString("obraId").orEmpty()
+            RequireSession(state, navController) { user ->
+                val roleAllowed = user.role == AppRole.MASTER || user.role == AppRole.GESTOR || user.role == AppRole.ALMOXARIFE || user.role == AppRole.ENGENHEIRO
+                if (!roleAllowed || !hasObraPermission(user, obraId, "estoque.view") || !AccessPolicy.hasObraAccess(user.role, user.obraScope, obraId)) {
+                    LaunchedEffect("estoque_deny_$obraId") { navController.navigate(AppRoutes.SemAcesso) }
+                    Text("Sem permissao", modifier = Modifier.padding(20.dp))
+                } else {
+                    mainViewModel.selectObra(obraId)
+                    EstoqueScreen(obraId = obraId, viewModel = estoqueViewModel)
+                }
+            }
+        }
+
+        composable(AppRoutes.Fornecedores) {
+            RequireSession(state, navController) { user ->
+                if (!AccessPolicy.can(user, "fornecedores.view")) {
+                    LaunchedEffect("forn_deny") { navController.navigate(AppRoutes.SemAcesso) }
+                    Text("Sem permissao", modifier = Modifier.padding(20.dp))
+                } else {
+                    FornecedoresManagerScreen(
+                        repository = container.cadastrosRepository,
+                        canManage = AccessPolicy.canManageCadastros(user.role)
+                    )
+                }
+            }
+        }
+
+        composable(AppRoutes.Materiais) {
+            RequireSession(state, navController) { user ->
+                if (!AccessPolicy.can(user, "materiais.view")) {
+                    LaunchedEffect("mat_deny") { navController.navigate(AppRoutes.SemAcesso) }
+                    Text("Sem permissao", modifier = Modifier.padding(20.dp))
+                } else {
+                    MateriaisManagerScreen(
+                        repository = container.cadastrosRepository,
+                        canManage = AccessPolicy.canManageCadastros(user.role)
+                    )
+                }
+            }
+        }
+
+        composable(AppRoutes.MaterialFornecedor) {
+            RequireSession(state, navController) { user ->
+                if (!AccessPolicy.can(user, "material_fornecedor.view")) {
+                    LaunchedEffect("matforn_deny") { navController.navigate(AppRoutes.SemAcesso) }
+                    Text("Sem permissao", modifier = Modifier.padding(20.dp))
+                } else {
+                    MaterialFornecedorManagerScreen(
+                        repository = container.cadastrosRepository,
+                        canManage = AccessPolicy.canManageCadastros(user.role)
+                    )
+                }
+            }
+        }
+
+        composable(AppRoutes.UsuariosAcessos) {
+            RequireSession(state, navController) { user ->
+                val allowedRole = user.role == AppRole.MASTER || user.role == AppRole.GESTOR
+                val allowedPermission = AccessPolicy.can(user, "users.manage")
+                if (!allowedRole || !allowedPermission) {
+                    LaunchedEffect("users_deny") { navController.navigate(AppRoutes.SemAcesso) }
+                    Text("Sem permissao", modifier = Modifier.padding(20.dp))
+                } else {
+                    UsuariosAcessosScreen(
+                        usuariosRepository = container.usuariosRepository,
+                        obrasRepository = container.obrasRepository
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun HomeTabs(
-    selectedObra: ObraSummary,
-    pedidosViewModel: PedidosViewModel,
-    estoqueViewModel: EstoqueViewModel,
-    onBackObras: () -> Unit
+private fun RequireSession(
+    state: MainUiState,
+    navController: NavHostController,
+    content: @Composable (SessionUser) -> Unit
 ) {
-    var tab by remember { mutableStateOf("pedidos") }
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column {
-                Text(selectedObra.name, style = MaterialTheme.typography.titleLarge)
-                Text("Obra ID: ${selectedObra.id}", style = MaterialTheme.typography.bodySmall)
-            }
-            Button(onClick = onBackObras) {
-                Text("Trocar obra")
-            }
+    val session = state.session
+    if (session == null) {
+        LaunchedEffect("require_login") {
+            navController.navigate(AppRoutes.Login) { popUpTo(0) }
         }
+        Text("Redirecionando para login...", modifier = Modifier.padding(20.dp))
+        return
+    }
+    content(session.user)
+}
 
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { tab = "pedidos" }) { Text("Pedidos") }
-            Button(onClick = { tab = "estoque" }) { Text("Estoque") }
-        }
-
-        when (tab) {
-            "pedidos" -> PedidosScreen(obraId = selectedObra.id, viewModel = pedidosViewModel)
-            "estoque" -> EstoqueScreen(obraId = selectedObra.id, viewModel = estoqueViewModel)
+@Composable
+private fun rememberObra(container: AppContainer, obraId: String): ObraSummary? {
+    var obra by remember(obraId) { mutableStateOf<ObraSummary?>(null) }
+    LaunchedEffect(obraId) {
+        obra = withContext(Dispatchers.IO) {
+            runCatching {
+                container.obrasRepository.listObras(includeDeleted = false, deletedSinceIso = null)
+                    .firstOrNull { it.id == obraId }
+            }.getOrNull()
         }
     }
+    return obra
+}
+
+private fun hasObraReadAccess(user: SessionUser, obraId: String): Boolean {
+    if (!AccessPolicy.hasObraAccess(user.role, user.obraScope, obraId)) return false
+    return AccessPolicy.can(user, "obras.view", obraId)
+}
+
+private fun hasObraPermission(user: SessionUser, obraId: String, permission: String): Boolean {
+    if (!AccessPolicy.hasObraAccess(user.role, user.obraScope, obraId)) return false
+    return AccessPolicy.can(user, permission, obraId)
 }
 
 private fun <T : ViewModel> simpleFactory(create: () -> T): ViewModelProvider.Factory {

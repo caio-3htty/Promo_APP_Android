@@ -31,7 +31,13 @@ class ObrasViewModelTest {
     @Test
     fun `load success emits content`() = runTest {
         val vm = ObrasViewModel(object : ObrasRepository {
-            override suspend fun listObras() = listOf(ObraSummary("1", "Obra A", "ativa", null, null))
+            override suspend fun listObras(includeDeleted: Boolean, deletedSinceIso: String?) =
+                listOf(ObraSummary("1", "Obra A", "ativa", null, null))
+
+            override suspend fun saveObra(obra: ObraSummary) = Unit
+            override suspend fun softDeleteObra(obraId: String) = Unit
+            override suspend fun restoreObra(obraId: String) = Unit
+            override suspend fun hardDeleteObra(obraId: String) = Unit
         })
         vm.load()
         dispatcher.scheduler.advanceUntilIdle()

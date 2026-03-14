@@ -39,11 +39,10 @@ jobs:
             echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Assemble debug
-        run: ./gradlew assembleDebug --stacktrace
+      - name: Quality gate
+        run: ./gradlew lintDebug testDebugUnitTest assembleDebug --stacktrace
 
-      - name: Assemble release (signed)
-        if: steps.keystore.outputs.ready == 'true'
+      - name: Assemble release
         run: ./gradlew assembleRelease --stacktrace
 
       - name: Upload debug APK
@@ -54,7 +53,6 @@ jobs:
           if-no-files-found: error
 
       - name: Upload release APK
-        if: steps.keystore.outputs.ready == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: app-release-apk

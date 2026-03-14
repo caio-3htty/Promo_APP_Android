@@ -94,4 +94,52 @@ class PedidosViewModel(
                 }
         }
     }
+
+    fun updateStatus(
+        obraId: String,
+        id: String,
+        status: String,
+        codigoCompra: String?,
+        onDone: () -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(creating = true, error = null)
+            runCatching {
+                repository.updatePedidoStatus(
+                    id = id,
+                    status = status,
+                    codigoCompra = codigoCompra,
+                    dataRecebimentoIso = null,
+                    recebidoPor = null
+                )
+            }.onSuccess {
+                _state.value = _state.value.copy(creating = false)
+                load(obraId)
+                onDone()
+            }.onFailure {
+                _state.value = _state.value.copy(
+                    creating = false,
+                    error = it.message ?: "Falha ao atualizar status do pedido"
+                )
+            }
+        }
+    }
+
+    fun softDelete(obraId: String, id: String, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(creating = true, error = null)
+            runCatching { repository.softDeletePedido(id) }
+                .onSuccess {
+                    _state.value = _state.value.copy(creating = false)
+                    load(obraId)
+                    onDone()
+                }
+                .onFailure {
+                    _state.value = _state.value.copy(
+                        creating = false,
+                        error = it.message ?: "Falha ao excluir pedido"
+                    )
+                }
+        }
+    }
 }

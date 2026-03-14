@@ -3,6 +3,12 @@ package com.prumo.data.storage
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.prumo.core.model.AccessMode
+import com.prumo.core.model.AppLanguage
+import com.prumo.core.model.AppRole
+import com.prumo.core.model.EffectivePermission
+import com.prumo.core.model.PermissionScopeType
+import com.prumo.core.model.PermissionSource
 import com.prumo.core.model.SessionToken
 import com.prumo.core.model.SessionUser
 import org.json.JSONObject
@@ -34,13 +40,15 @@ class EncryptedSessionStore(context: Context) : SessionStore {
                     userId = json.getString("userId"),
                     email = json.getString("email"),
                     fullName = nullableString(json, "fullName"),
-                    role = nullableString(json, "role"),
+                    role = AppRole.parse(nullableString(json, "role")),
                     tenantId = json.getString("tenantId"),
-                    obraScope = json.optJSONArray("obraScope")?.let { array ->
-                        buildList {
-                            for (i in 0 until array.length()) add(array.getString(i))
-                        }
-                    } ?: emptyList()
+                    isActive = json.optBoolean("isActive", false),
+                    preferredLanguage = AppLanguage.parse(nullableString(json, "preferredLanguage")),
+                    accessMode = AccessMode.parse(nullableString(json, "accessMode")),
+                    obraScope = readStringArray(json, "obraScope"),
+                    permissions = readPermissions(json),
+                    multiObraEnabled = json.optBoolean("multiObraEnabled", true),
+                    defaultObraId = nullableString(json, "defaultObraId")
                 )
             )
         }.getOrNull()
@@ -54,9 +62,21 @@ class EncryptedSessionStore(context: Context) : SessionStore {
             .put("userId", token.user.userId)
             .put("email", token.user.email)
             .put("fullName", token.user.fullName)
-            .put("role", token.user.role)
+            .put("role", token.user.role?.wireValue)
             .put("tenantId", token.user.tenantId)
+            .put("isActive", token.user.isActive)
+            .put("preferredLanguage", token.user.preferredLanguage.wireValue)
+            .put("accessMode", token.user.accessMode.wireValue)
             .put("obraScope", org.json.JSONArray(token.user.obraScope))
+            .put("multiObraEnabled", token.user.multiObraEnabled)
+            .put("defaultObraId", token.user.defaultObraId)
+            .put("permissions", org.json.JSONArray(token.user.permissions.map { permission ->
+                JSONObject()
+                    .put("permissionKey", permission.permissionKey)
+                    .put("scopeType", permission.scopeType.wireValue)
+                    .put("source", permission.source.name)
+                    .put("obraIds", org.json.JSONArray(permission.obraIds))
+            }))
 
         prefs.edit().putString(KEY, json.toString()).apply()
     }
@@ -71,6 +91,31 @@ class EncryptedSessionStore(context: Context) : SessionStore {
         private fun nullableString(json: JSONObject, key: String): String? {
             if (json.isNull(key)) return null
             return json.optString(key).ifBlank { null }
+        }
+
+        private fun readStringArray(json: JSONObject, key: String): List<String> {
+            val array = json.optJSONArray(key) ?: return emptyList()
+            return buildList {
+                for (i in 0 until array.length()) add(array.getString(i))
+            }
+        }
+
+        private fun readPermissions(json: JSONObject): List<EffectivePermission> {
+            val array = json.optJSONArray("permissions") ?: return emptyList()
+            return buildList {
+                for (i in 0 until array.length()) {
+                    val row = array.optJSONObject(i) ?: continue
+                    add(
+                        EffectivePermission(
+                            permissionKey = row.optString("permissionKey"),
+                            scopeType = PermissionScopeType.parse(row.optString("scopeType")),
+                            obraIds = readStringArray(row, "obraIds"),
+                            source = runCatching { PermissionSource.valueOf(row.optString("source")) }
+                                .getOrDefault(PermissionSource.CUSTOM)
+                        )
+                    )
+                }
+            }
         }
     }
 }
