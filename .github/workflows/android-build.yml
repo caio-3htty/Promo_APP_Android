@@ -1,13 +1,10 @@
-name: android-ci
+name: android-build
 
 on:
-  pull_request:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
-  shell-sync:
+  build-apk:
     runs-on: ubuntu-latest
     env:
       PRUMO_WEB_CLIENT_DIR: ./prumo-web-client
@@ -29,6 +26,9 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -41,5 +41,15 @@ jobs:
       - name: Install web dependencies
         run: npm --prefix ./prumo-web-client ci
 
-      - name: Sync Android shell with embedded web build
-        run: npm run android:sync
+      - name: Install Android SDK packages
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Build Android APK
+        run: npm run android:build
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: prumo-android-client-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

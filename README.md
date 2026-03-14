@@ -1,45 +1,43 @@
 # Prumo Android Client
 
-Aplicativo Android do Prumo (Expo + React Native + Supabase).
+Shell Android (Capacitor) que embute o build do `prumo-web-client`.
 
 ## Escopo atual
-- Login com e-mail/senha.
-- Carregamento de perfil, role e obras vinculadas.
-- Exibicao de acesso efetivo do usuario.
+- Paridade visual/funcional com o web.
+- Empacotamento local do build web no APK.
 
 ## Requisitos
 - Node.js 20+
 - npm 10+
-- Conta Expo para builds EAS
+- Android Studio + Android SDK (para gerar APK local)
 
 ## Rodar local
 ```bash
 npm install
-cp .env.example .env
-npm run start
+npm run android:open
 ```
 
-## Variaveis de ambiente
-- `EXPO_PUBLIC_SUPABASE_URL`
-- `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+Por padrao os scripts procuram o repo web em `../prumo-web-client`.
+Se estiver em outro caminho, defina `PRUMO_WEB_CLIENT_DIR`.
+
+## Fluxo de build Android
+```bash
+npm run android:sync
+npm run android:build
+```
 
 ## Validacao local
 ```bash
-npm run typecheck
+npm run doctor
 ```
 
-## Build Android (EAS)
-```bash
-npm run eas:build:preview
-npm run eas:build:production
-```
+## Variaveis de ambiente
+As variaveis sao consumidas no build do `prumo-web-client`:
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
 
 ## GitHub Actions
 Workflows incluidos:
-- `android-ci`: instala e roda `npm run typecheck`
-- `android-eas-build`: build EAS manual (`workflow_dispatch`)
-
-Secret necessario para build remoto:
-- `EXPO_TOKEN`
+- `android-ci`: valida sync do shell com build web embutido.
 
 # Promo_APP_Android

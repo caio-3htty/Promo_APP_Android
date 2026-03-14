@@ -1,4 +1,5 @@
 node_modules
-.expo
-.eas
 .env
+android/.gradle
+android/.cxx
+web
