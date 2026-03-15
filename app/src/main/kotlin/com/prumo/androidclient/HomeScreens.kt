@@ -3,7 +3,6 @@ package com.prumo.androidclient
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,10 +23,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.prumo.core.i18n.t
+import com.prumo.core.i18n.statusLabel
 import com.prumo.core.model.AppRole
 import com.prumo.core.model.ObraSummary
 import com.prumo.core.model.SessionUser
 import com.prumo.core.repository.ObrasRepository
+import com.prumo.core.ui.AppPage
+import com.prumo.core.ui.SectionCard
+import com.prumo.core.ui.StateMessage
 import java.time.Instant
 import kotlinx.coroutines.launch
 
@@ -39,20 +43,16 @@ fun IndexScreen(
     onOpenUsuarios: () -> Unit,
     onLogout: () -> Unit
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Text("PRUMO", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-        Text("Perfil: ${user.role?.wireValue ?: "sem papel"}")
-        Text("Obras vinculadas: ${user.obraScope.size}")
+    AppPage(title = t("app.name")) {
+        StateMessage(t("home.role", "value" to (user.role?.wireValue ?: t("home.no_role"))))
+        StateMessage(t("home.linked_works", "count" to user.obraScope.size))
 
-        Button(onClick = onOpenObras, modifier = Modifier.fillMaxWidth()) { Text("Obras") }
-        Button(onClick = onOpenCadastros, modifier = Modifier.fillMaxWidth()) { Text("Cadastros") }
+        Button(onClick = onOpenObras, modifier = Modifier.fillMaxWidth()) { Text(t("home.works")) }
+        Button(onClick = onOpenCadastros, modifier = Modifier.fillMaxWidth()) { Text(t("home.registers")) }
         if (user.role == AppRole.MASTER || user.role == AppRole.GESTOR) {
-            Button(onClick = onOpenUsuarios, modifier = Modifier.fillMaxWidth()) { Text("Usuarios e Acessos") }
+            Button(onClick = onOpenUsuarios, modifier = Modifier.fillMaxWidth()) { Text(t("home.users_access")) }
         }
-        Button(onClick = onLogout, modifier = Modifier.fillMaxWidth()) { Text("Sair") }
+        Button(onClick = onLogout, modifier = Modifier.fillMaxWidth()) { Text(t("home.logout")) }
     }
 }
 
@@ -63,18 +63,14 @@ fun SemAcessoScreen(
     onGoHome: () -> Unit,
     onLogout: () -> Unit
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text("Sem acesso operacional", style = MaterialTheme.typography.headlineSmall)
-        Text("Ativo: ${user?.isActive ?: false}")
-        Text("Perfil: ${user?.role?.wireValue ?: "indefinido"}")
-        Text("Obras vinculadas: ${user?.obraScope?.size ?: 0}")
+    AppPage(title = t("access.no_operational")) {
+        StateMessage(t("access.active", "value" to (user?.isActive ?: false)))
+        StateMessage(t("home.role", "value" to (user?.role?.wireValue ?: t("access.undefined"))))
+        StateMessage(t("home.linked_works", "count" to (user?.obraScope?.size ?: 0)))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onRefresh) { Text("Atualizar status") }
-            Button(onClick = onGoHome) { Text("Inicio") }
-            Button(onClick = onLogout) { Text("Sair") }
+            Button(onClick = onRefresh) { Text(t("access.refresh")) }
+            Button(onClick = onGoHome) { Text(t("access.home")) }
+            Button(onClick = onLogout) { Text(t("home.logout")) }
         }
     }
 }
@@ -88,19 +84,14 @@ fun DashboardScreen(
     onOpenCadastros: () -> Unit,
     onBackObras: () -> Unit
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Text(obra?.name ?: "Dashboard da obra", style = MaterialTheme.typography.headlineSmall)
-        Text(obra?.address ?: "")
+    AppPage(title = obra?.name ?: t("dashboard.default"), subtitle = obra?.address.orEmpty()) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onBackObras) { Text("Voltar obras") }
-            Button(onClick = onOpenCadastros) { Text("Cadastros") }
+            Button(onClick = onBackObras) { Text(t("dashboard.back_works")) }
+            Button(onClick = onOpenCadastros) { Text(t("home.registers")) }
         }
-        Button(onClick = onOpenPedidos, modifier = Modifier.fillMaxWidth()) { Text("Pedidos") }
-        Button(onClick = onOpenRecebimento, modifier = Modifier.fillMaxWidth()) { Text("Recebimento") }
-        Button(onClick = onOpenEstoque, modifier = Modifier.fillMaxWidth()) { Text("Estoque") }
+        Button(onClick = onOpenPedidos, modifier = Modifier.fillMaxWidth()) { Text(t("dashboard.orders")) }
+        Button(onClick = onOpenRecebimento, modifier = Modifier.fillMaxWidth()) { Text(t("dashboard.receipt")) }
+        Button(onClick = onOpenEstoque, modifier = Modifier.fillMaxWidth()) { Text(t("dashboard.stock")) }
     }
 }
 
@@ -142,58 +133,91 @@ fun ObrasManagerScreen(
 
     LaunchedEffect(showTrash) { load() }
 
-    Column(modifier = Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(if (showTrash) "Lixeira de obras" else "Obras", style = MaterialTheme.typography.titleLarge)
+    AppPage(
+        title = if (showTrash) t("obras.trash_title") else t("obras.title"),
+        actions = {
             if (canManage) {
-                Button(onClick = { showTrash = !showTrash }) { Text(if (showTrash) "Ativos" else "Lixeira") }
+                Button(onClick = { showTrash = !showTrash }) {
+                    Text(if (showTrash) t("common.active") else t("common.trash"))
+                }
+            }
+        }
+    ) {
+        if (canManage && !showTrash) {
+            SectionCard {
+                OutlinedTextField(
+                    value = formName,
+                    onValueChange = { formName = it },
+                    label = { Text(t("obras.name")) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = formAddress,
+                    onValueChange = { formAddress = it },
+                    label = { Text(t("obras.address")) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = formDescription,
+                    onValueChange = { formDescription = it },
+                    label = { Text(t("obras.description")) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = formStatus,
+                    onValueChange = { formStatus = it },
+                    label = { Text(t("obras.status")) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Button(onClick = {
+                    scope.launch {
+                        runCatching {
+                            repository.saveObra(
+                                ObraSummary(
+                                    id = editingId ?: "",
+                                    name = formName,
+                                    status = formStatus,
+                                    address = formAddress.ifBlank { null },
+                                    description = formDescription.ifBlank { null }
+                                )
+                            )
+                        }.onSuccess {
+                            editingId = null
+                            formName = ""
+                            formAddress = ""
+                            formDescription = ""
+                            formStatus = "ativa"
+                            load()
+                        }.onFailure { error = it.message }
+                    }
+                }) { Text(if (editingId == null) t("obras.create") else t("obras.save")) }
             }
         }
 
-        if (canManage && !showTrash) {
-            OutlinedTextField(value = formName, onValueChange = { formName = it }, label = { Text("Nome obra") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = formAddress, onValueChange = { formAddress = it }, label = { Text("Endereco") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = formDescription, onValueChange = { formDescription = it }, label = { Text("Descricao") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = formStatus, onValueChange = { formStatus = it }, label = { Text("Status") }, modifier = Modifier.fillMaxWidth())
-            Button(onClick = {
-                scope.launch {
-                    runCatching {
-                        repository.saveObra(
-                            ObraSummary(
-                                id = editingId ?: "",
-                                name = formName,
-                                status = formStatus,
-                                address = formAddress.ifBlank { null },
-                                description = formDescription.ifBlank { null }
-                            )
-                        )
-                    }.onSuccess {
-                        editingId = null
-                        formName = ""
-                        formAddress = ""
-                        formDescription = ""
-                        formStatus = "ativa"
-                        load()
-                    }.onFailure { error = it.message }
-                }
-            }) { Text(if (editingId == null) "Criar obra" else "Salvar obra") }
+        if (loading) {
+            CircularProgressIndicator()
         }
-
-        if (loading) CircularProgressIndicator()
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        error?.let { StateMessage(it, isError = true) }
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(items) { obra ->
                 Card(onClick = { if (!showTrash) onOpenDashboard(obra) }) {
-                    Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         Text(obra.name, fontWeight = FontWeight.SemiBold)
-                        Text("Status: ${obra.status}")
+                        Text(t("obras.status_value", "value" to statusLabel(obra.status)))
                         obra.address?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                         if (canManage) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 if (showTrash) {
-                                    Button(onClick = { scope.launch { repository.restoreObra(obra.id); load() } }) { Text("Restaurar") }
-                                    Button(onClick = { scope.launch { repository.hardDeleteObra(obra.id); load() } }) { Text("Excluir") }
+                                    Button(onClick = { scope.launch { repository.restoreObra(obra.id); load() } }) {
+                                        Text(t("common.restore"))
+                                    }
+                                    Button(onClick = { scope.launch { repository.hardDeleteObra(obra.id); load() } }) {
+                                        Text(t("common.delete"))
+                                    }
                                 } else {
                                     Button(onClick = {
                                         editingId = obra.id
@@ -201,8 +225,10 @@ fun ObrasManagerScreen(
                                         formAddress = obra.address.orEmpty()
                                         formDescription = obra.description.orEmpty()
                                         formStatus = obra.status
-                                    }) { Text("Editar") }
-                                    Button(onClick = { scope.launch { repository.softDeleteObra(obra.id); load() } }) { Text("Lixeira") }
+                                    }) { Text(t("common.edit")) }
+                                    Button(onClick = { scope.launch { repository.softDeleteObra(obra.id); load() } }) {
+                                        Text(t("common.trash"))
+                                    }
                                 }
                             }
                         }
