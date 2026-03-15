@@ -26,6 +26,9 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Ensure Gradle wrapper is executable
+        run: chmod +x ./gradlew
+
       - name: Lint + Unit tests + Build
         run: |
           ./gradlew lintDebug testDebugUnitTest assembleDebug assembleRelease --stacktrace
