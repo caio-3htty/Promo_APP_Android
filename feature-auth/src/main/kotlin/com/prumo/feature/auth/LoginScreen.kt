@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.prumo.core.i18n.t
 import com.prumo.core.model.AppRole
 import com.prumo.core.model.SignupMode
 
@@ -48,9 +49,9 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("PRUMO", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+        Text(t("app.name"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
         Text(
-            if (state.isSignUp) "Criar conta / solicitar acesso" else "Entrar",
+            if (state.isSignUp) t("auth.create_or_request") else t("auth.login"),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(top = 8.dp, bottom = 20.dp)
         )
@@ -62,14 +63,14 @@ fun LoginScreen(
                     modifier = Modifier.weight(1f),
                     enabled = !state.loading
                 ) {
-                    Text(if (state.signupMode == SignupMode.COMPANY_OWNER) "Conta empresa *" else "Conta empresa")
+                    Text(if (state.signupMode == SignupMode.COMPANY_OWNER) "${t("auth.company_account")} *" else t("auth.company_account"))
                 }
                 Button(
                     onClick = { viewModel.onSignupModeChange(SignupMode.COMPANY_INTERNAL) },
                     modifier = Modifier.weight(1f),
                     enabled = !state.loading
                 ) {
-                    Text(if (state.signupMode == SignupMode.COMPANY_INTERNAL) "Conta interna *" else "Conta interna")
+                    Text(if (state.signupMode == SignupMode.COMPANY_INTERNAL) "${t("auth.internal_account")} *" else t("auth.internal_account"))
                 }
             }
 
@@ -79,7 +80,7 @@ fun LoginScreen(
                     .padding(top = 12.dp),
                 value = state.fullName,
                 onValueChange = viewModel::onFullNameChange,
-                label = { Text("Nome completo") },
+                label = { Text(t("auth.full_name")) },
                 enabled = !state.loading
             )
 
@@ -89,7 +90,7 @@ fun LoginScreen(
                     .padding(top = 12.dp),
                 value = state.companyName,
                 onValueChange = viewModel::onCompanyNameChange,
-                label = { Text("Nome da empresa") },
+                label = { Text(t("auth.company_name")) },
                 enabled = !state.loading
             )
 
@@ -99,7 +100,7 @@ fun LoginScreen(
                     .padding(top = 12.dp),
                 value = state.username,
                 onValueChange = viewModel::onUsernameChange,
-                label = { Text("Usuario (nome exibido)") },
+                label = { Text(t("auth.username")) },
                 enabled = !state.loading
             )
 
@@ -109,7 +110,7 @@ fun LoginScreen(
                     .padding(top = 12.dp),
                 value = state.jobTitle,
                 onValueChange = viewModel::onJobTitleChange,
-                label = { Text("Cargo") },
+                label = { Text(t("auth.job_title")) },
                 enabled = !state.loading
             )
         }
@@ -120,7 +121,7 @@ fun LoginScreen(
                 .padding(top = if (state.isSignUp) 12.dp else 0.dp),
             value = state.email,
             onValueChange = viewModel::onEmailChange,
-            label = { Text("E-mail corporativo") },
+            label = { Text(t("auth.corporate_email")) },
             enabled = !state.loading
         )
 
@@ -130,7 +131,7 @@ fun LoginScreen(
                 .padding(top = 12.dp),
             value = state.password,
             onValueChange = viewModel::onPasswordChange,
-            label = { Text("Senha") },
+            label = { Text(t("auth.password")) },
             visualTransformation = PasswordVisualTransformation(),
             enabled = !state.loading
         )
@@ -173,7 +174,7 @@ fun LoginScreen(
             if (state.loading) {
                 CircularProgressIndicator()
             } else {
-                Text(if (state.isSignUp) "Enviar solicitacao" else "Entrar")
+                Text(if (state.isSignUp) t("auth.send_request") else t("auth.login"))
             }
         }
 
@@ -184,7 +185,7 @@ fun LoginScreen(
                 .fillMaxWidth()
                 .padding(top = 8.dp)
         ) {
-            Text(if (state.isSignUp) "Ja tenho conta" else "Criar conta")
+            Text(if (state.isSignUp) t("auth.have_account") else t("auth.create_account"))
         }
     }
 }
@@ -196,7 +197,7 @@ private fun RolePicker(
     onSelect: (AppRole) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
-        Text("Perfil de acesso", style = MaterialTheme.typography.labelLarge)
+        Text(t("auth.access_profile"), style = MaterialTheme.typography.labelLarge)
         Row(modifier = Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(
                 AppRole.GESTOR,

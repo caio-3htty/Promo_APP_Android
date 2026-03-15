@@ -223,6 +223,20 @@ data class AccessRequestReviewData(
     val requestedRole: AppRole
 )
 
+data class PermissionCatalogItem(
+    val key: String,
+    val area: String,
+    val labelPt: String,
+    val obraScoped: Boolean,
+    val isActive: Boolean
+)
+
+data class UserPermissionGrantDraft(
+    val permissionKey: String,
+    val scopeType: PermissionScopeType,
+    val obraIds: List<String>
+)
+
 data class AccessUserRecord(
     val userId: String,
     val tenantId: String,
@@ -232,7 +246,35 @@ data class AccessUserRecord(
     val role: AppRole?,
     val accessMode: AccessMode,
     val userTypeId: String?,
-    val obraIds: List<String>
+    val obraIds: List<String>,
+    val grants: List<UserPermissionGrantDraft> = emptyList()
+)
+
+data class UserTypeRecord(
+    val id: String,
+    val name: String,
+    val description: String?,
+    val baseRole: AppRole,
+    val isActive: Boolean
+)
+
+data class UserTypeUpsertInput(
+    val id: String? = null,
+    val name: String,
+    val description: String? = null,
+    val baseRole: AppRole,
+    val isActive: Boolean,
+    val createdByUserId: String? = null
+)
+
+data class AccessAuditEntry(
+    val id: String,
+    val entityTable: String,
+    val action: String,
+    val changedBy: String?,
+    val targetUserId: String?,
+    val obraId: String?,
+    val createdAt: String
 )
 
 data class UserAccessUpdateInput(
@@ -242,7 +284,9 @@ data class UserAccessUpdateInput(
     val role: AppRole?,
     val accessMode: AccessMode,
     val userTypeId: String?,
-    val obraIds: List<String>
+    val obraIds: List<String>,
+    val grants: List<UserPermissionGrantDraft> = emptyList(),
+    val changedByUserId: String? = null
 )
 
 data class SupabaseConfig(

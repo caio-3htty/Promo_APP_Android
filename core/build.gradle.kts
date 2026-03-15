@@ -14,6 +14,11 @@ android {
 
     buildFeatures {
         buildConfig = false
+        compose = true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.14"
     }
 
     compileOptions {
@@ -27,6 +32,12 @@ android {
 }
 
 dependencies {
+    implementation(platform("androidx.compose:compose-bom:2024.09.03"))
+    implementation("androidx.compose.runtime:runtime")
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.material3:material3")
+
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
 }

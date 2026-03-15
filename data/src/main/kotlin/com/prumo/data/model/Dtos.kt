@@ -45,6 +45,14 @@ data class UserPermissionGrantDto(
 )
 
 @Serializable
+data class UserPermissionGrantByUserDto(
+    val id: String,
+    @SerialName("user_id") val userId: String,
+    @SerialName("permission_key") val permissionKey: String,
+    @SerialName("scope_type") val scopeType: String
+)
+
+@Serializable
 data class UserPermissionObraDto(
     @SerialName("grant_id") val grantId: String,
     @SerialName("obra_id") val obraId: String
@@ -242,6 +250,26 @@ data class AccessUserProfileDto(
 )
 
 @Serializable
+data class UserTypeDto(
+    val id: String,
+    val name: String,
+    val description: String? = null,
+    @SerialName("base_role") val baseRole: String,
+    @SerialName("is_active") val isActive: Boolean
+)
+
+@Serializable
+data class AuditLogDto(
+    val id: String,
+    @SerialName("entity_table") val entityTable: String,
+    val action: String,
+    @SerialName("changed_by") val changedBy: String? = null,
+    @SerialName("target_user_id") val targetUserId: String? = null,
+    @SerialName("obra_id") val obraId: String? = null,
+    @SerialName("created_at") val createdAt: String
+)
+
+@Serializable
 data class UserObraDto(
     @SerialName("user_id") val userId: String,
     @SerialName("obra_id") val obraId: String
@@ -251,4 +279,13 @@ data class UserObraDto(
 data class UserRoleByUserDto(
     @SerialName("user_id") val userId: String,
     val role: String
+)
+
+@Serializable
+data class PermissionCatalogDto(
+    val key: String,
+    val area: String,
+    @SerialName("label_pt") val labelPt: String,
+    @SerialName("obra_scoped") val obraScoped: Boolean,
+    @SerialName("is_active") val isActive: Boolean
 )

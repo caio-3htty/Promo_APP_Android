@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,7 +26,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.prumo.core.i18n.LocalI18n
+import com.prumo.core.i18n.I18nCatalog
+import com.prumo.core.i18n.t
 import com.prumo.core.model.AccessPolicy
+import com.prumo.core.model.AppLanguage
 import com.prumo.core.model.AppRole
 import com.prumo.core.model.ObraSummary
 import com.prumo.core.model.SessionUser
@@ -79,7 +84,11 @@ private fun PromoApp(container: AppContainer) {
         mainViewModel.bootstrap()
     }
 
-    NavHost(navController = navController, startDestination = AppRoutes.Splash) {
+    val language = state.session?.user?.preferredLanguage ?: AppLanguage.PT_BR
+    val i18n = remember(language) { I18nCatalog(language) }
+
+    CompositionLocalProvider(LocalI18n provides i18n) {
+        NavHost(navController = navController, startDestination = AppRoutes.Splash) {
         composable(AppRoutes.Splash) {
             LaunchedEffect(state.bootDone, state.session?.user?.userId) {
                 if (!state.bootDone) return@LaunchedEffect
@@ -89,7 +98,7 @@ private fun PromoApp(container: AppContainer) {
                     navController.navigate(AppRoutes.Index) { popUpTo(0) }
                 }
             }
-            Text("Inicializando...", modifier = Modifier.padding(24.dp))
+            Text(t("app.initializing"), modifier = Modifier.padding(24.dp))
         }
 
         composable(AppRoutes.Login) {
@@ -123,7 +132,7 @@ private fun PromoApp(container: AppContainer) {
             RequireSession(state, navController) { user ->
                 if (!AccessPolicy.hasOperationalAccess(user)) {
                     LaunchedEffect("no_access") { navController.navigate(AppRoutes.SemAcesso) }
-                    Text("Redirecionando...", modifier = Modifier.padding(20.dp))
+                    Text(t("nav.redirecting"), modifier = Modifier.padding(20.dp))
                 } else {
                     LaunchedEffect(user.multiObraEnabled, user.defaultObraId) {
                         val defaultObraId = user.defaultObraId
@@ -162,7 +171,7 @@ private fun PromoApp(container: AppContainer) {
             RequireSession(state, navController) { user ->
                 if (!AccessPolicy.can(user, "obras.view")) {
                     LaunchedEffect("obras_deny") { navController.navigate(AppRoutes.SemAcesso) }
-                    Text("Sem permissao", modifier = Modifier.padding(20.dp))
+                    Text(t("access.no_permission"), modifier = Modifier.padding(20.dp))
                 } else {
                     ObrasManagerScreen(
                         repository = container.obrasRepository,
@@ -184,7 +193,7 @@ private fun PromoApp(container: AppContainer) {
             RequireSession(state, navController) { user ->
                 if (!hasObraReadAccess(user, obraId)) {
                     LaunchedEffect("dashboard_deny_$obraId") { navController.navigate(AppRoutes.SemAcesso) }
-                    Text("Sem permissao", modifier = Modifier.padding(20.dp))
+                    Text(t("access.no_permission"), modifier = Modifier.padding(20.dp))
                 } else {
                     val obra = rememberObra(container = container, obraId = obraId)
                     DashboardScreen(
@@ -207,7 +216,7 @@ private fun PromoApp(container: AppContainer) {
             RequireSession(state, navController) { user ->
                 if (!hasObraPermission(user, obraId, "pedidos.view")) {
                     LaunchedEffect("pedidos_deny_$obraId") { navController.navigate(AppRoutes.SemAcesso) }
-                    Text("Sem permissao", modifier = Modifier.padding(20.dp))
+                    Text(t("access.no_permission"), modifier = Modifier.padding(20.dp))
                 } else {
                     mainViewModel.selectObra(obraId)
                     PedidosScreen(
@@ -231,7 +240,7 @@ private fun PromoApp(container: AppContainer) {
                 val permissionAllowed = hasObraPermission(user, obraId, "pedidos.view") || hasObraPermission(user, obraId, "pedidos.receive")
                 if (!roleAllowed || !permissionAllowed || !AccessPolicy.hasObraAccess(user.role, user.obraScope, obraId)) {
                     LaunchedEffect("receb_deny_$obraId") { navController.navigate(AppRoutes.SemAcesso) }
-                    Text("Sem permissao", modifier = Modifier.padding(20.dp))
+                    Text(t("access.no_permission"), modifier = Modifier.padding(20.dp))
                 } else {
                     mainViewModel.selectObra(obraId)
                     RecebimentoManagerScreen(
@@ -253,7 +262,7 @@ private fun PromoApp(container: AppContainer) {
                 val roleAllowed = user.role == AppRole.MASTER || user.role == AppRole.GESTOR || user.role == AppRole.ALMOXARIFE || user.role == AppRole.ENGENHEIRO
                 if (!roleAllowed || !hasObraPermission(user, obraId, "estoque.view") || !AccessPolicy.hasObraAccess(user.role, user.obraScope, obraId)) {
                     LaunchedEffect("estoque_deny_$obraId") { navController.navigate(AppRoutes.SemAcesso) }
-                    Text("Sem permissao", modifier = Modifier.padding(20.dp))
+                    Text(t("access.no_permission"), modifier = Modifier.padding(20.dp))
                 } else {
                     mainViewModel.selectObra(obraId)
                     EstoqueScreen(obraId = obraId, viewModel = estoqueViewModel)
@@ -265,7 +274,7 @@ private fun PromoApp(container: AppContainer) {
             RequireSession(state, navController) { user ->
                 if (!AccessPolicy.can(user, "fornecedores.view")) {
                     LaunchedEffect("forn_deny") { navController.navigate(AppRoutes.SemAcesso) }
-                    Text("Sem permissao", modifier = Modifier.padding(20.dp))
+                    Text(t("access.no_permission"), modifier = Modifier.padding(20.dp))
                 } else {
                     FornecedoresManagerScreen(
                         repository = container.cadastrosRepository,
@@ -279,7 +288,7 @@ private fun PromoApp(container: AppContainer) {
             RequireSession(state, navController) { user ->
                 if (!AccessPolicy.can(user, "materiais.view")) {
                     LaunchedEffect("mat_deny") { navController.navigate(AppRoutes.SemAcesso) }
-                    Text("Sem permissao", modifier = Modifier.padding(20.dp))
+                    Text(t("access.no_permission"), modifier = Modifier.padding(20.dp))
                 } else {
                     MateriaisManagerScreen(
                         repository = container.cadastrosRepository,
@@ -293,7 +302,7 @@ private fun PromoApp(container: AppContainer) {
             RequireSession(state, navController) { user ->
                 if (!AccessPolicy.can(user, "material_fornecedor.view")) {
                     LaunchedEffect("matforn_deny") { navController.navigate(AppRoutes.SemAcesso) }
-                    Text("Sem permissao", modifier = Modifier.padding(20.dp))
+                    Text(t("access.no_permission"), modifier = Modifier.padding(20.dp))
                 } else {
                     MaterialFornecedorManagerScreen(
                         repository = container.cadastrosRepository,
@@ -309,15 +318,17 @@ private fun PromoApp(container: AppContainer) {
                 val allowedPermission = AccessPolicy.can(user, "users.manage")
                 if (!allowedRole || !allowedPermission) {
                     LaunchedEffect("users_deny") { navController.navigate(AppRoutes.SemAcesso) }
-                    Text("Sem permissao", modifier = Modifier.padding(20.dp))
+                    Text(t("access.no_permission"), modifier = Modifier.padding(20.dp))
                 } else {
                     UsuariosAcessosScreen(
                         usuariosRepository = container.usuariosRepository,
-                        obrasRepository = container.obrasRepository
+                        obrasRepository = container.obrasRepository,
+                        currentUserId = user.userId
                     )
                 }
             }
         }
+    }
     }
 }
 
@@ -332,7 +343,7 @@ private fun RequireSession(
         LaunchedEffect("require_login") {
             navController.navigate(AppRoutes.Login) { popUpTo(0) }
         }
-        Text("Redirecionando para login...", modifier = Modifier.padding(20.dp))
+        Text(t("nav.redirecting_login"), modifier = Modifier.padding(20.dp))
         return
     }
     content(session.user)

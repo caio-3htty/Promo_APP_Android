@@ -3,6 +3,7 @@ package com.prumo.data.repository
 import com.prumo.core.model.AccessMode
 import com.prumo.core.model.AccessRequestReviewData
 import com.prumo.core.model.AccessReviewDecision
+import com.prumo.core.model.AccessAuditEntry
 import com.prumo.core.model.AccessUserRecord
 import com.prumo.core.model.AppLanguage
 import com.prumo.core.model.AppRole
@@ -14,6 +15,7 @@ import com.prumo.core.model.MaterialFornecedorRecord
 import com.prumo.core.model.MaterialRecord
 import com.prumo.core.model.MaterialSummary
 import com.prumo.core.model.ObraSummary
+import com.prumo.core.model.PermissionCatalogItem
 import com.prumo.core.model.PermissionScopeType
 import com.prumo.core.model.PermissionSource
 import com.prumo.core.model.PedidoInput
@@ -25,7 +27,10 @@ import com.prumo.core.model.SignupMode
 import com.prumo.core.model.SignupRequestInput
 import com.prumo.core.model.SignupResult
 import com.prumo.core.model.SupabaseConfig
+import com.prumo.core.model.UserPermissionGrantDraft
 import com.prumo.core.model.UserAccessUpdateInput
+import com.prumo.core.model.UserTypeRecord
+import com.prumo.core.model.UserTypeUpsertInput
 import com.prumo.core.repository.CadastrosRepository
 import com.prumo.core.repository.AuthRepository
 import com.prumo.core.repository.EstoqueRepository
@@ -35,6 +40,7 @@ import com.prumo.core.repository.UsuariosRepository
 import com.prumo.data.api.SupabaseAuthApi
 import com.prumo.data.api.SupabaseRestClient
 import com.prumo.data.model.AccessUserProfileDto
+import com.prumo.data.model.AuditLogDto
 import com.prumo.data.model.AuthResponseDto
 import com.prumo.data.model.EstoqueDto
 import com.prumo.data.model.EstoquePatchDto
@@ -48,19 +54,23 @@ import com.prumo.data.model.ObraDto
 import com.prumo.data.model.ObraUpsertDto
 import com.prumo.data.model.PedidoDto
 import com.prumo.data.model.PedidoUpsertDto
+import com.prumo.data.model.PermissionCatalogDto
 import com.prumo.data.model.ProfileDto
 import com.prumo.data.model.TenantSettingsDto
 import com.prumo.data.model.UserObraDto
+import com.prumo.data.model.UserPermissionGrantByUserDto
 import com.prumo.data.model.UserPermissionGrantDto
 import com.prumo.data.model.UserPermissionObraDto
 import com.prumo.data.model.UserRoleByUserDto
 import com.prumo.data.model.UserRoleDto
+import com.prumo.data.model.UserTypeDto
 import com.prumo.data.model.UserTypePermissionDto
 import com.prumo.data.storage.SessionStore
 import java.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import org.json.JSONArray
 import org.json.JSONObject
 
 class SupabaseAuthRepository(
@@ -939,8 +949,33 @@ class SupabaseUsuariosRepository(
                 deserializer = UserObraDto.serializer()
             )
 
+            val grants = restClient.getList(
+                path = "user_permission_grants",
+                query = mapOf("select" to "id,user_id,permission_key,scope_type"),
+                deserializer = UserPermissionGrantByUserDto.serializer()
+            )
+
+            val grantObras = if (grants.isNotEmpty()) {
+                val inClause = "in.(${grants.joinToString(",") { it.id }})"
+                restClient.getList(
+                    path = "user_permission_obras",
+                    query = mapOf("select" to "grant_id,obra_id", "grant_id" to inClause),
+                    deserializer = UserPermissionObraDto.serializer()
+                )
+            } else {
+                emptyList()
+            }
+
             val roleByUser = roles.associateBy({ it.userId }, { AppRole.parse(it.role) })
             val obraByUser = assignments.groupBy({ it.userId }, { it.obraId })
+            val obraIdsByGrant = grantObras.groupBy({ it.grantId }, { it.obraId })
+            val grantsByUser = grants.groupBy({ it.userId }, { grant ->
+                UserPermissionGrantDraft(
+                    permissionKey = grant.permissionKey,
+                    scopeType = PermissionScopeType.parse(grant.scopeType),
+                    obraIds = obraIdsByGrant[grant.id].orEmpty()
+                )
+            })
 
             profiles.map {
                 AccessUserRecord(
@@ -952,8 +987,100 @@ class SupabaseUsuariosRepository(
                     role = roleByUser[it.userId],
                     accessMode = AccessMode.parse(it.accessMode),
                     userTypeId = it.userTypeId,
-                    obraIds = obraByUser[it.userId].orEmpty()
+                    obraIds = obraByUser[it.userId].orEmpty(),
+                    grants = grantsByUser[it.userId].orEmpty()
                 )
+            }
+        }
+    }
+
+    override suspend fun listUserTypes(): List<UserTypeRecord> {
+        return withContext(Dispatchers.IO) {
+            restClient.getList(
+                path = "user_types",
+                query = mapOf(
+                    "select" to "id,name,description,base_role,is_active",
+                    "order" to "name.asc"
+                ),
+                deserializer = UserTypeDto.serializer()
+            ).map {
+                UserTypeRecord(
+                    id = it.id,
+                    name = it.name,
+                    description = it.description,
+                    baseRole = AppRole.parse(it.baseRole) ?: AppRole.OPERACIONAL,
+                    isActive = it.isActive
+                )
+            }
+        }
+    }
+
+    override suspend fun listPermissionCatalog(): List<PermissionCatalogItem> {
+        return withContext(Dispatchers.IO) {
+            restClient.getList(
+                path = "permission_catalog",
+                query = mapOf(
+                    "select" to "key,area,label_pt,obra_scoped,is_active",
+                    "is_active" to "eq.true",
+                    "order" to "area.asc,key.asc"
+                ),
+                deserializer = PermissionCatalogDto.serializer()
+            ).map {
+                PermissionCatalogItem(
+                    key = it.key,
+                    area = it.area,
+                    labelPt = it.labelPt,
+                    obraScoped = it.obraScoped,
+                    isActive = it.isActive
+                )
+            }
+        }
+    }
+
+    override suspend fun listAccessAuditLog(limit: Int): List<AccessAuditEntry> {
+        return withContext(Dispatchers.IO) {
+            restClient.getList(
+                path = "audit_log",
+                query = mapOf(
+                    "select" to "id,entity_table,action,changed_by,target_user_id,obra_id,created_at",
+                    "entity_table" to "in.(user_roles,user_obras,profiles,user_types)",
+                    "order" to "created_at.desc",
+                    "limit" to limit.coerceAtLeast(1).coerceAtMost(200).toString()
+                ),
+                deserializer = AuditLogDto.serializer()
+            ).map {
+                AccessAuditEntry(
+                    id = it.id,
+                    entityTable = it.entityTable,
+                    action = it.action,
+                    changedBy = it.changedBy,
+                    targetUserId = it.targetUserId,
+                    obraId = it.obraId,
+                    createdAt = it.createdAt
+                )
+            }
+        }
+    }
+
+    override suspend fun saveUserType(input: UserTypeUpsertInput) {
+        withContext(Dispatchers.IO) {
+            val description = input.description?.trim()?.ifBlank { null }
+            val payload = JSONObject()
+                .put("name", input.name.trim())
+                .put("base_role", input.baseRole.wireValue)
+                .put("is_active", input.isActive)
+                .put("created_by", input.createdByUserId)
+                .put("description", description ?: JSONObject.NULL)
+                .toString()
+
+            if (!input.id.isNullOrBlank()) {
+                restClient.patch(
+                    path = "user_types",
+                    query = mapOf("id" to "eq.${input.id}"),
+                    bodyJson = payload
+                )
+            } else {
+                restClient.post(path = "user_types", bodyJson = payload)
             }
         }
     }
@@ -1019,6 +1146,58 @@ class SupabaseUsuariosRepository(
                     .put("obra_id", obraId)
                     .toString()
                 restClient.post(path = "user_obras", bodyJson = row)
+            }
+
+            val existingGrants = restClient.getList(
+                path = "user_permission_grants",
+                query = mapOf(
+                    "select" to "id,user_id,permission_key,scope_type",
+                    "user_id" to "eq.${input.userId}"
+                ),
+                deserializer = UserPermissionGrantByUserDto.serializer()
+            )
+            val existingGrantIds = existingGrants.map { it.id }
+
+            if (existingGrantIds.isNotEmpty()) {
+                val inClause = "in.(${existingGrantIds.joinToString(",")})"
+                restClient.delete(
+                    path = "user_permission_obras",
+                    query = mapOf("grant_id" to inClause)
+                )
+            }
+
+            restClient.delete(
+                path = "user_permission_grants",
+                query = mapOf("user_id" to "eq.${input.userId}")
+            )
+
+            if (input.accessMode == AccessMode.CUSTOM && input.grants.isNotEmpty()) {
+                input.grants.forEach { grant ->
+                    val grantBody = JSONObject()
+                        .put("tenant_id", input.tenantId)
+                        .put("user_id", input.userId)
+                        .put("permission_key", grant.permissionKey)
+                        .put("scope_type", grant.scopeType.wireValue)
+                        .put("granted_by", input.changedByUserId)
+                        .toString()
+
+                    val inserted = restClient.postReturning(
+                        path = "user_permission_grants",
+                        bodyJson = grantBody
+                    )
+                    val grantId = JSONArray(inserted).optJSONObject(0)?.optString("id").orEmpty()
+                    if (grantId.isBlank()) error("Falha ao criar grant para ${grant.permissionKey}")
+
+                    if (grant.scopeType == PermissionScopeType.SELECTED_OBRAS && grant.obraIds.isNotEmpty()) {
+                        grant.obraIds.forEach { obraId ->
+                            val row = JSONObject()
+                                .put("grant_id", grantId)
+                                .put("obra_id", obraId)
+                                .toString()
+                            restClient.post(path = "user_permission_obras", bodyJson = row)
+                        }
+                    }
+                }
             }
         }
     }

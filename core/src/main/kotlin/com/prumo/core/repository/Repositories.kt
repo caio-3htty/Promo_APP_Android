@@ -7,8 +7,10 @@ import com.prumo.core.model.MaterialFornecedorRecord
 import com.prumo.core.model.MaterialRecord
 import com.prumo.core.model.MaterialSummary
 import com.prumo.core.model.ObraSummary
+import com.prumo.core.model.PermissionCatalogItem
 import com.prumo.core.model.AccessRequestReviewData
 import com.prumo.core.model.AccessReviewDecision
+import com.prumo.core.model.AccessAuditEntry
 import com.prumo.core.model.AccessUserRecord
 import com.prumo.core.model.PedidoInput
 import com.prumo.core.model.PedidoResumo
@@ -17,6 +19,8 @@ import com.prumo.core.model.SessionToken
 import com.prumo.core.model.SignupRequestInput
 import com.prumo.core.model.SignupResult
 import com.prumo.core.model.UserAccessUpdateInput
+import com.prumo.core.model.UserTypeRecord
+import com.prumo.core.model.UserTypeUpsertInput
 
 interface SessionProvider {
     suspend fun currentSession(): SessionToken?
@@ -92,5 +96,9 @@ interface CadastrosRepository {
 
 interface UsuariosRepository {
     suspend fun listAccessUsers(): List<AccessUserRecord>
+    suspend fun listUserTypes(): List<UserTypeRecord>
+    suspend fun listPermissionCatalog(): List<PermissionCatalogItem>
+    suspend fun listAccessAuditLog(limit: Int = 50): List<AccessAuditEntry>
+    suspend fun saveUserType(input: UserTypeUpsertInput)
     suspend fun saveUserAccess(input: UserAccessUpdateInput)
 }

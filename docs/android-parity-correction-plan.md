@@ -16,7 +16,8 @@ Baseline web congelado: `promo_APP_Web@73c4984`
 - Concluido: pedidos com busca, filtro, criacao, edicao, aprovacao/cancelamento e soft-delete.
 - Concluido: recebimento com `codigo_compra` obrigatorio + `data_recebimento` + upsert de estoque.
 - Concluido: usuarios/acessos com edicao de ativo/inativo, papel, modo template/custom e vinculos de obra.
-- Pendente: paridade completa do fluxo de grants customizados por permissao/escopo de obra (nivel `UsuariosAcessos` web).
+- Concluido: grants customizados por permissao/escopo (`tenant`, `all_obras`, `selected_obras`) com persistencia em `user_permission_grants` e `user_permission_obras`.
+- Pendente: trilha de auditoria/abas secundarias do `UsuariosAcessos` web (log completo e edicao de tipos de usuario).
 - Pendente: i18n total (pt-BR/en/es) com cobertura de labels/mensagens em todas as telas Android.
 
 ### Release 3 (paridade visual alta + hardening)
@@ -27,7 +28,7 @@ Baseline web congelado: `promo_APP_Web@73c4984`
 
 ## Backlog de fechamento (ordem de execucao)
 
-1. `UsuariosAcessos`: trazer grants detalhados (`user_permission_grants`, `user_permission_obras`) com UX de escopo tenant/all_obras/selected_obras.
+1. `UsuariosAcessos`: adicionar log de auditoria e tab de tipos de usuario para fechar 1:1 com web.
 2. `Pedidos`: substituir campos manuais de IDs por seletores completos (dialog/lista) e modal de detalhes equivalente ao web.
 3. `Recebimento`: trocar entrada livre de data ISO por seletor de data com validacao.
 4. `I18n Android`: provider + dicionarios `pt-BR/en/es` + persistencia de preferencia.
