@@ -12,9 +12,3 @@ local.properties
 *.pem
 local.keystore
 app-release.keystore
-
-# legacy stack frozen for historical reference only
-legacy-capacitor/android/.gradle/
-legacy-capacitor/android/build/
-legacy-capacitor/android/app/build/
-legacy-capacitor/node_modules/

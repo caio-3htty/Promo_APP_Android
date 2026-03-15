@@ -25,8 +25,10 @@ Baseline de contrato web congelado: ver [docs/web-baseline-parity.md](docs/web-b
 - JDK 17
 - Android SDK instalado (variavel `ANDROID_HOME` ou `local.properties` com `sdk.dir=...`)
 - Variaveis de ambiente (ou `~/.gradle/gradle.properties`):
+  - `SUPABASE_PROJECT_REF` (opcional; default `awkvzbpnihtgceqdwisc`)
   - `SUPABASE_URL`
   - `SUPABASE_ANON_KEY`
+  - aliases aceitos: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`
 
 ## Build e testes locais
 Linux/macOS:
@@ -39,6 +41,12 @@ Windows:
 gradlew.bat lintDebug testDebugUnitTest assembleDebug assembleRelease
 ```
 
+## Code Hygiene
+- Verificar referencias de legado: `git grep -n "legacy-capacitor"`
+- Gate tecnico:
+  - Linux/macOS: `./gradlew lintDebug testDebugUnitTest assembleDebug assembleRelease`
+  - Windows: `gradlew.bat lintDebug testDebugUnitTest assembleDebug assembleRelease`
+
 ## Release interna (APK)
 - Pipeline CI (`android-native-ci.yml`): lint + testes + debug APK.
 - Pipeline release (`android-native-release.yml`): gera debug APK e release APK.
@@ -49,8 +57,13 @@ gradlew.bat lintDebug testDebugUnitTest assembleDebug assembleRelease
   - `KEY_PASSWORD`
 
 ## Contrato de ambiente
-- O app utiliza `SUPABASE_URL` e `SUPABASE_ANON_KEY` em `BuildConfig`.
+- O app injeta `SUPABASE_URL` e `SUPABASE_ANON_KEY` em `BuildConfig`.
+- Resolucao de fallback:
+  1. `gradle.properties` do projeto/usuario
+  2. variaveis de ambiente `SUPABASE_*`
+  3. aliases `VITE_SUPABASE_*`
+  4. URL derivada de `SUPABASE_PROJECT_REF`
 - Nao versionar `.env`, keystore ou chaves privadas.
 
-## Legacy congelado
-O app Capacitor antigo foi congelado em `legacy-capacitor/` apenas para referencia e rollback historico.
+## Limpeza de legado
+O legado Capacitor foi removido deste repositorio. O fluxo oficial e exclusivamente Kotlin nativo.

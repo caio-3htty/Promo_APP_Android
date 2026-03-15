@@ -4,6 +4,18 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+fun resolveConfigValue(propertyName: String, envNames: List<String>, fallback: String = ""): String {
+    val gradleValue = providers.gradleProperty(propertyName).orNull?.trim().orEmpty()
+    if (gradleValue.isNotEmpty()) return gradleValue
+
+    for (envName in envNames) {
+        val envValue = System.getenv(envName)?.trim().orEmpty()
+        if (envValue.isNotEmpty()) return envValue
+    }
+
+    return fallback
+}
+
 android {
     namespace = "com.prumo.androidclient"
     compileSdk = providers.gradleProperty("COMPILE_SDK").get().toInt()
@@ -17,8 +29,25 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val supabaseUrl = providers.gradleProperty("SUPABASE_URL").orElse(System.getenv("SUPABASE_URL") ?: "").get()
-        val supabaseAnonKey = providers.gradleProperty("SUPABASE_ANON_KEY").orElse(System.getenv("SUPABASE_ANON_KEY") ?: "").get()
+        val supabaseProjectRef = resolveConfigValue(
+            propertyName = "SUPABASE_PROJECT_REF",
+            envNames = listOf("SUPABASE_PROJECT_REF", "VITE_SUPABASE_PROJECT_REF"),
+            fallback = "awkvzbpnihtgceqdwisc"
+        )
+        val supabaseUrl = resolveConfigValue(
+            propertyName = "SUPABASE_URL",
+            envNames = listOf("SUPABASE_URL", "VITE_SUPABASE_URL"),
+            fallback = "https://${supabaseProjectRef}.supabase.co"
+        )
+        val supabaseAnonKey = resolveConfigValue(
+            propertyName = "SUPABASE_ANON_KEY",
+            envNames = listOf(
+                "SUPABASE_ANON_KEY",
+                "VITE_SUPABASE_PUBLISHABLE_KEY",
+                "VITE_SUPABASE_ANON_KEY",
+                "SUPABASE_PUBLISHABLE_KEY"
+            )
+        )
 
         buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
